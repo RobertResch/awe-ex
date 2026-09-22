@@ -1,0 +1,84 @@
+name: Deploy to GitHub Pages
+
+# Demo 10: push to main is the "code just became the live version" signal,
+# so that's what triggers a real deployment - deliberately narrower than
+# ci.yml's "every push, every branch". workflow_dispatch is kept alongside
+# it so a deploy can be re-run on demand (e.g. to redeploy after a Pages
+# outage) without needing an empty commit.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Demo 10 Q2: these are the only permissions this workflow needs, and no
+# repository secrets at all - `id-token: write` lets the deploy job request
+# a short-lived OIDC token proving "this run belongs to this repo", which
+# `actions/deploy-pages` exchanges for permission to publish; `pages:
+# write` is what actually allows publishing. `contents: read` is just
+# checkout. Nothing here is a long-lived credential that could leak.
+# Granting more than this (e.g. `contents: write` or a personal access
+# token) would let a compromised workflow run push to the repo itself, not
+# just publish a build - a real escalation for no benefit here.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deployment should ever be in flight at a time; if a second push
+# to main lands while a deploy is still running, cancel the stale one
+# rather than letting two deploys race for who publishes last.
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Demo 9 Q1: re-running lint and the type-checked build here, instead
+      # of trusting that ci.yml already passed on this exact commit, is
+      # deliberate. GitHub Actions workflows don't share state or artifacts
+      # with each other by default, and "it already passed on my machine"
+      # (or in a different workflow run) isn't a guarantee about what's
+      # about to be published - re-validating right before deploy is cheap
+      # insurance against a race, a skipped check, or a workflow file that
+      # silently stopped running.
+      - name: Lint
+        run: npm run lint
+
+      - name: Build (type-checks, then runs vite build)
+        run: npm run build
+
+      - name: Upload build output
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # Demo 9 Q2: this is the actual publish mechanism - a dedicated,
+      # first-party GitHub action that takes the artifact uploaded by the
+      # build job (via actions/upload-pages-artifact above) and publishes
+      # it straight to GitHub Pages' hosting, authenticated by the
+      # `id-token`/`pages` permissions above. It does not push to a
+      # `gh-pages` branch or touch repository contents at all.
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

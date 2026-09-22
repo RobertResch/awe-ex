@@ -1,0 +1,13 @@
+dist
+node_modules
+public
+package-lock.json
+app.js
+*.md
+.vscode
+.idea
+
+# Hand-tuned, stable, and not part of this exercise's TS migration — scoping
+# Prettier to js/ts avoids a huge one-off reformat unrelated to that work.
+*.css
+*.html

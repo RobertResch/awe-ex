@@ -10,30 +10,36 @@ loaded the wrong calibration profile and triggered its emergency stop. This appl
 investigator review the evidence, people, locations, and timeline surrounding the incident, and
 build up a working hypothesis about what happened.
 
-This repository contains an existing vanilla-JavaScript (no frameworks used) investigation application. The system is
-functional but has accumulated technical debt and inconsistent implementation decisions. Your task
-during the course will be to analyse, maintain, refactor, migrate, and extend it.
+This repository contains a TypeScript investigation application (originally vanilla JavaScript, no
+frameworks used), built and served with [Vite](https://vitejs.dev). The system is functional but has
+accumulated technical debt and inconsistent implementation decisions. Your task during the course
+will be to analyse, maintain, refactor, migrate, and extend it.
 
 ## Running the application
 
-This application uses `fetch()` to load its case data from local JSON files, so it must be served
-over HTTP — opening `index.html` directly from the filesystem (`file://`) will not work in most
-browsers.
-
-Any static file server will do. For example, from the project root:
+Requires [Node.js](https://nodejs.org) 20+.
 
 ```bash
-# Python 3
-python -m http.server 8080
-
-# Node.js (no install required)
-npx serve .
-
-# VS Code
-# Use the "Live Server" extension
+npm install     # first time only
+npm run dev     # start the Vite dev server with hot module replacement
 ```
 
-Then open `http://localhost:8080` (or whatever port your server prints) in your browser.
+Then open the URL Vite prints (typically `http://localhost:5173`).
+
+Other scripts:
+
+```bash
+npm run build         # type-check, then produce a production build in dist/
+npm run preview       # serve the production build from dist/ locally
+npm run lint          # ESLint
+npm run lint:fix       # ESLint, applying safe auto-fixes
+npm run format        # Prettier, rewriting files
+npm run format:check  # Prettier, check only (used in CI)
+npm run typecheck     # tsc --noEmit
+```
+
+Case data lives under `public/data/*.json` and is fetched by the app at runtime — Vite serves
+`public/` as static passthrough files, so this works the same way in `dev`, `build`, and `preview`.
 
 ## Features
 

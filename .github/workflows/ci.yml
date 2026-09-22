@@ -1,0 +1,48 @@
+name: CI
+
+# Demo 10: runs on every push (any branch) and every pull request. This is
+# the cheap, fast feedback loop - it should fire constantly during
+# development, not just when code is about to ship. Contrast with
+# deploy.yml, which only triggers on push to main (plus a manual dispatch)
+# because deploying is a deliberate, one-directional action, not something
+# you want on every branch push.
+on:
+  push:
+  pull_request:
+
+jobs:
+  # Demo 10 Q1: this is "a job" (the workflow has exactly one). Each named
+  # step below is "a step" within it.
+  lint-format-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          # Demo 10 Q2: setup-node's built-in npm cache keys on
+          # package-lock.json - without it, every run would re-download the
+          # full dependency tree from the npm registry instead of restoring
+          # it from the Actions cache, which is slower and, if npm's
+          # registry ever hiccups mid-run, a correctness risk too (a flaky
+          # install failing a run that had nothing wrong with the code).
+          cache: npm
+
+      - name: Install dependencies
+        # `npm ci` (not `npm install`): installs exactly what
+        # package-lock.json specifies, and fails instead of silently
+        # updating the lockfile if package.json and the lockfile have
+        # drifted apart - the correct, reproducible choice for CI.
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Type check
+        run: npm run typecheck

@@ -1,0 +1,33 @@
+{
+  "name": "project-remotion-investigation-portal",
+  "version": "1.0.0",
+  "description": "Browser-based investigation portal for the Project ReMotion case study (AWE course, Exercise 1 & 2).",
+  "type": "module",
+  "license": "UNLICENSED",
+  "private": true,
+  "author": "robertresch64@gmail.com",
+  "scripts": {
+    "dev": "concurrently -n vite,tsc -c blue,yellow \"vite --configLoader native\" \"tsc --noEmit --watch\"",
+    "build": "tsc --noEmit && vite build --configLoader native",
+    "preview": "vite preview --configLoader native",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.5",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.8",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vite": "^8.3.0"
+  }
+}
