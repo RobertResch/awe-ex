@@ -22,7 +22,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           # Demo 10 Q2: setup-node's built-in npm cache keys on
           # package-lock.json - without it, every run would re-download the
           # full dependency tree from the npm registry instead of restoring
