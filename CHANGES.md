@@ -211,12 +211,18 @@ both in dev and in the production build. `index.html` and `styles.css` stay at t
 project subpath — see Demo 9) and a relocated `cacheDir` (see "Environment quirks" below).
 
 **Verified, not just assumed:** started `npm run dev`, `curl`'d `/`, `/data/case.json`,
-`/assets/logo/logo.svg`, and `/js/main.js` (all 200), edited `js/dashboard.js`'s dashboard title
-string while the dev server was running, and confirmed via a second `curl` that the server served the
-updated source on the very next request with no restart — the same on-demand-transform mechanism
-HMR's file-watch layer builds on. A real browser wasn't available in this environment (the Chrome
-extension bridge didn't connect), so the full visual "no page reload, state preserved" HMR
-observation still needs a live check by hand before class.
+`/assets/logo/logo.svg`, and `/js/main.js` (all 200). Later, once a live browser became available
+(Chrome via the Claude browser extension), re-verified end-to-end: every view (Dashboard, Evidence
+— search/filter/sort/bookmark/status-change/note-save, People & Locations — both tabs, Timeline —
+including the quick-view modal's cross-navigation into the Evidence detail view, Workspace —
+bookmarks/notes/hypothesis form persisting correctly across a real page reload), zero console errors.
+Also ran a precise HMR test using a `window.__hmrCanary` global (destroyed only by an actual page
+navigation, not by an in-place module swap): editing `js/dashboard.ts` visibly updated the page but
+**did destroy the canary** — this app never calls `import.meta.hot.accept()`, so Vite's default
+fallback for a JS/TS module with no accept boundary is a full page reload, not true HMR, even though
+it looks instantaneous. Editing `styles.css`, by contrast, updated the page **without** destroying the
+canary — CSS is hot-swapped in place by Vite without needing any `accept()` call at all. Full
+reasoning in `EXERCISE_2_ANSWERS.md`, Demo 2, Q2.
 
 ## Demo 3 — Production build & preview
 

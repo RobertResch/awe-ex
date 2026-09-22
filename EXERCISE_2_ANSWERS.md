@@ -96,11 +96,15 @@ course), and an 11-module single-app project has no multi-package workspace or m
   relative path resolving correctly once `public/`'s contents are served from the site root.
 - `vite.config.js` added (`base: "./"`, a relocated `cacheDir` — see the environment-quirks note).
 - Verified with the dev server actually running: `curl`'d `/`, `/data/case.json`,
-  `/assets/logo/logo.svg`, `/js/main.js` (all `200`), then edited `js/dashboard.js`'s title string
-  while the server was running and re-`curl`'d `/js/main.js`'s import graph — the server served the
-  updated source immediately, no restart. A live browser (for the full visual HMR check — the
-  "no full-page-reload, state preserved" observation) wasn't available in this environment; that
-  specific visual confirmation still needs a manual check before class.
+  `/assets/logo/logo.svg`, `/js/main.js` (all `200`), then edited `js/dashboard.ts`'s title string
+  while the server was running and re-`curl`'d it — the server served the updated source
+  immediately, no restart.
+- **Verified live, in a real browser** (Chrome, via the Claude browser extension), including every
+  view (Dashboard, Evidence — search/filter/sort/bookmark/note/status-change, People & Locations —
+  both tabs, Timeline — including the quick-view modal and its "Open full evidence" cross-navigation,
+  Workspace — bookmarks/notes/hypothesis form with real `localStorage` persistence confirmed across a
+  hard reload). Zero console errors throughout. Full HMR mechanics confirmed with a canary-variable
+  test — see Q2 below for the precise (and more interesting than "yes it works") result.
 
 ### Questions
 
@@ -122,13 +126,35 @@ e.g. to app state) when you triggered it?**
 
 HMR is the dev server pushing an updated module to an already-running page over a WebSocket
 connection and having the page's module runtime re-evaluate just that module (and anything that
-statically can't avoid re-running), *instead of* reloading the whole document. What I directly
-confirmed (server-side, via `curl`, since a live browser wasn't available here): editing
-`js/dashboard.js`'s source while the dev server was running caused the *very next* request for that
-module to return the updated content, with no server restart and no re-triggering of `npm run dev`.
-That's the mechanism HMR's client-side apply step builds on. The visual half of this — that the page
-does *not* do a full navigation/reload, and that state like the current hash-route or an in-progress
-form field survives — needs a live browser and should be confirmed by hand before presenting.
+statically can't avoid re-running) *in place* — no navigation, no full document reload — provided
+something in the update chain actually accepts the update (`import.meta.hot.accept()`).
+
+Tested this precisely, live, in a real browser, with a canary: before each edit, set
+`window.__hmrCanary = <unique value>` via the console — an arbitrary in-memory global with no
+connection to the app's own code, which only a *full page navigation* can destroy (a true in-place
+module swap leaves the rest of the page's JS realm, and therefore this variable, completely alone).
+
+- **Editing `js/dashboard.ts`** (app code): the page's content visibly updated within about a
+  second, with no visible flash/navigation — but the canary was gone afterward (`window.__hmrCanary`
+  → `undefined`). So this *looked* like HMR but was actually a **full page reload**: Vite's
+  WebSocket client walked the import graph from `dashboard.ts` up to `main.ts`, found nothing along
+  that chain calling `import.meta.hot.accept()` (this app never does — it's plain vanilla TS with no
+  HMR-awareness written into it), and fell back to its documented default for an unacceptable
+  update: reload the whole page. State that *looks* preserved (the bookmark count, the reviewed
+  count) is actually just `localStorage` re-read from scratch on the fresh load, not survived
+  in-memory state — a hard reload would show exactly the same thing.
+- **Editing `styles.css`**, same canary test: the header color changed instantly, and the canary
+  **survived** (`window.__hmrCanary2` still held its original value afterward). CSS is a case Vite
+  hot-swaps by construction — it patches/replaces the injected `<style>` tag in place — without
+  needing any `accept()` call from application code at all, unlike JS/TS module updates.
+
+So the honest answer to "what did and didn't happen to app state": for **this specific app**, editing
+application TypeScript never actually exercises true HMR at all — every visible "hot update" during
+this session's dev work was a full reload the whole time, just a fast one. Editing CSS is the one
+case where real, in-place HMR happens. To get true JS-level HMR here, the code itself would need to
+opt in (e.g. `if (import.meta.hot) import.meta.hot.accept();` in an entry module) and actually handle
+re-applying state on update — nothing in this codebase does that, since it predates this migration
+and was never written with HMR in mind.
 
 **Why does an app already split into ES modules integrate naturally with a tool like Vite, compared
 to the original single-`<script>` version?**
